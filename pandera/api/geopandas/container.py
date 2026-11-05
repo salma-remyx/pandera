@@ -46,6 +46,7 @@ class GeoDataFrameSchema(DataFrameSchema):
             index=schema.index,
             dtype=schema.dtype,
             coerce=schema.coerce,
+            nullable=schema.nullable,
             strict=cast(StrictType, schema.strict),
             name=schema.name,
             ordered=schema.ordered,

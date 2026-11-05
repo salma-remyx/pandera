@@ -8,6 +8,7 @@ import pandas as pd
 
 from pandera import errors
 from pandera.api.base.types import CheckList, ParserList
+from pandera.api.dataframe.components import _comparable_dict
 from pandera.api.pandas.array import ArraySchema
 from pandera.api.pandas.container import DataFrameSchema
 from pandera.api.pandas.types import PandasDtypeInputTypes
@@ -26,7 +27,7 @@ class Column(ArraySchema[pd.DataFrame]):
         dtype: PandasDtypeInputTypes | None = None,
         checks: CheckList | None = None,
         parsers: ParserList | None = None,
-        nullable: bool = False,
+        nullable: bool | None = None,
         unique: bool = False,
         report_duplicates: UniqueSettings = "all",
         coerce: bool = False,
@@ -49,6 +50,8 @@ class Column(ArraySchema[pd.DataFrame]):
         :param checks: checks to verify validity of the column
         :param parsers: parsers to verify validity of the column
         :param nullable: Whether or not column can contain null values.
+            ``None`` (default) behaves like ``False`` unless the dataframe-
+            level schema applies a ``nullable`` default.
         :param unique: whether column values should be unique
         :param report_duplicates: how to report unique errors
             - `exclude_first`: report all duplicates except first occurrence
@@ -197,9 +200,10 @@ class Column(ArraySchema[pd.DataFrame]):
             return NotImplemented
 
         def _compare_dict(obj):
+            comparable = _comparable_dict(obj)
             return {
                 k: v if k not in ["_checks", "_parsers"] else set(v)
-                for k, v in obj.__dict__.items()
+                for k, v in comparable.items()
             }
 
         return _compare_dict(self) == _compare_dict(other)
@@ -270,7 +274,7 @@ class Index(ArraySchema[pd.Index]):
         return False
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        return _comparable_dict(self) == _comparable_dict(other)
 
     ###########################
     # Schema Strategy Methods #
@@ -475,7 +479,7 @@ class MultiIndex(DataFrameSchema):
         )
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        return _comparable_dict(self) == _comparable_dict(other)
 
     ###########################
     # Schema Strategy Methods #

@@ -52,6 +52,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
         index=None,
         dtype: Any | None = None,
         coerce: bool = False,
+        nullable: bool | None = None,
         strict: StrictType = False,
         name: str | None = None,
         ordered: bool = False,
@@ -82,6 +83,10 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             validation. This overrides any coerce setting at the column
             or index level. This has no effect on columns where
             ``dtype=None``.
+        :param nullable: default nullability applied at validation time to
+            the columns and index that do not set their own ``nullable``.
+            ``None`` (default) applies no dataframe-level default, so each
+            component keeps its own setting (``False`` unless overridden).
         :param strict: ensure that all and only the columns defined in the
             schema are present in the dataframe. If set to 'filter',
             only the columns in the schema will be passed to the validated
@@ -180,6 +185,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
         self.index = index
         self.strict: Union[bool, str] = strict
         self._coerce = coerce
+        self._nullable = nullable
         self.ordered = ordered
         self._unique = [unique] if isinstance(unique, str) else unique
         self.report_duplicates = report_duplicates
@@ -249,6 +255,16 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
     def coerce(self, value: bool) -> None:
         """Set coerce attribute"""
         self._coerce = value
+
+    @property
+    def nullable(self) -> bool | None:
+        """Default nullability applied to components that don't set one."""
+        return self._nullable
+
+    @nullable.setter
+    def nullable(self, value: bool | None) -> None:
+        """Set nullable attribute."""
+        self._nullable = value
 
     @property
     def unique(self):
@@ -361,6 +377,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             f"index={self.index.__repr__()}, "
             f"dtype={self._dtype}, "
             f"coerce={self.coerce}, "
+            f"nullable={self.nullable}, "
             f"strict={self.strict}, "
             f"name={self.name}, "
             f"ordered={self.ordered}, "
@@ -425,6 +442,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             f"{checks_str},\n"
             f"{parsers_str},\n"
             f"{indent}coerce={self.coerce},\n"
+            f"{indent}nullable={self.nullable},\n"
             f"{indent}dtype={self._dtype},\n"
             f"{indent}index={index},\n"
             f"{indent}strict={self.strict},\n"
@@ -506,6 +524,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -561,6 +580,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -627,6 +647,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -697,6 +718,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -783,6 +805,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -984,6 +1007,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -1052,6 +1076,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema Index(name=category, type=DataType(str))>,
             strict=False,
@@ -1083,6 +1108,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema MultiIndex(
                 indexes=[
@@ -1199,6 +1225,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=None,
             strict=False,
@@ -1233,6 +1260,7 @@ class DataFrameSchema(Generic[TDataObject], BaseSchema):
             checks=[],
             parsers=[],
             coerce=False,
+            nullable=None,
             dtype=None,
             index=<Schema Index(name=unique_id2, type=DataType(str))>,
             strict=False,

@@ -116,7 +116,7 @@ class SeriesSchema(ArraySchema[pd.Series]):
         checks: CheckList | None = None,
         parsers: ParserList | None = None,
         index=None,
-        nullable: bool = False,
+        nullable: bool | None = None,
         unique: bool = False,
         report_duplicates: UniqueSettings = "all",
         coerce: bool = False,
@@ -140,6 +140,8 @@ class SeriesSchema(ArraySchema[pd.Series]):
             pandas.Series object.
         :param index: specify the datatypes and properties of the index.
         :param nullable: Whether or not column can contain null values.
+            ``None`` (default) behaves like ``False`` unless the dataframe-
+            level schema applies a ``nullable`` default.
         :param unique: Whether or not column can contain duplicate
             values.
         :param report_duplicates: how to report unique errors

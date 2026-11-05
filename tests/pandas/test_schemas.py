@@ -1232,6 +1232,79 @@ def test_no_dtype_series() -> None:
         schema.validate(pd.Series([0, 1, 2, None, 4, 1]))
 
 
+def test_schema_level_nullable_default() -> None:
+    """A schema-level ``nullable`` applies to components that don't set their
+    own; an explicit per-component ``nullable=False`` overrides it."""
+    schema = DataFrameSchema(
+        {
+            "column1": Column(float),
+            "column2": Column(float, nullable=False),
+        },
+        nullable=True,
+    )
+    assert schema.nullable is True
+
+    # the propagated default accepts null values ...
+    df = pd.DataFrame({"column1": [1.0, np.nan], "column2": [1.0, 2.0]})
+    assert isinstance(schema.validate(df), pd.DataFrame)
+
+    # ... but an explicit Column(nullable=False) is not overridden
+    failure_df = pd.DataFrame(
+        {"column1": [1.0, 2.0], "column2": [1.0, np.nan]}
+    )
+    with pytest.raises(errors.SchemaError):
+        schema.validate(failure_df)
+
+
+def test_schema_level_nullable_applies_to_index() -> None:
+    """The schema-level ``nullable`` also applies to an index that doesn't
+    set its own nullability."""
+    schema = DataFrameSchema(
+        {"column1": Column(float)},
+        index=Index(float, name="index"),
+        nullable=True,
+    )
+    df = pd.DataFrame(
+        {"column1": [1.0, 2.0]}, index=pd.Index([1.0, np.nan], name="index")
+    )
+    assert isinstance(schema.validate(df), pd.DataFrame)
+
+
+def test_schema_level_nullable_default_preserved() -> None:
+    """Without a schema-level ``nullable``, components keep their own
+    nullability setting (unset behaves as ``False``)."""
+    schema = DataFrameSchema(
+        {
+            "column1": Column(float),
+            "column2": Column(float, nullable=True),
+        }
+    )
+    assert schema.nullable is None
+    assert schema.columns["column1"].nullable is False
+    assert schema.columns["column2"].nullable is True
+
+    # an unset column is still non-nullable
+    with pytest.raises(errors.SchemaError):
+        schema.validate(pd.DataFrame({"column1": [1.0, np.nan]}))
+
+    # the stored schema is never mutated by the validation-time default
+    propagated_schema = DataFrameSchema(
+        {"column1": Column(float)}, nullable=True
+    )
+    propagated_schema.validate(pd.DataFrame({"column1": [1.0, np.nan]}))
+    assert propagated_schema.columns["column1"].nullable is False
+
+
+def test_series_schema_nullable_is_unaffected_by_default() -> None:
+    """A standalone SeriesSchema keeps its own nullability; the new
+    ``None`` default behaves exactly like ``False``."""
+    assert SeriesSchema(float).nullable is False
+    assert SeriesSchema(float, nullable=True).nullable is True
+    assert SeriesSchema(float, nullable=False).nullable is False
+    with pytest.raises(errors.SchemaError):
+        SeriesSchema(float).validate(pd.Series([1.0, np.nan]))
+
+
 def test_coerce_without_dtype() -> None:
     """Test that an error is thrown when a dtype isn't specified and coerce
     is True."""

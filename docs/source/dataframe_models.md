@@ -533,6 +533,33 @@ validation. To add missing fields, use
 `Config` with required fields that specify a `default` value or
 `nullable=True`.
 
+(schema-level-nullable-models)=
+
+Like the {ref}`schema-level nullable default <schema-level-nullable>` in the
+object-based API, `Config.nullable = True` makes every field that doesn't
+declare its own nullability accept null values at validation time:
+
+```{code-cell} python
+class NullableByDefault(pa.DataFrameModel):
+    nullable_field: Series[int]
+    explicit_field: Series[int] = pa.Field(nullable=False)
+
+    class Config:
+        nullable = True
+
+
+df = pd.DataFrame(
+    {
+        "nullable_field": pd.Series([1, None, 3], dtype="Int64"),
+        "explicit_field": [1, 2, 3],
+    }
+)
+NullableByDefault.validate(df)
+```
+
+An explicit `pa.Field(nullable=False)` (or an annotation like
+`FieldType[T | None]`) still takes precedence over the `Config` default.
+
 ## Schema Inheritance
 
 You can also use inheritance to build schemas on top of a base schema.

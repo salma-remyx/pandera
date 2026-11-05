@@ -51,10 +51,13 @@ SchemaIndex = Union[Index, MultiIndex]
 def _get_nullable_coercion_dtype(
     dtype: Any,
     *,
-    nullable: bool,
+    nullable: bool | None,
     coerce: bool,
 ) -> Any:
-    """Use nullable pandas dtypes for nullable fields when coercing."""
+    """Use nullable pandas dtypes for nullable fields when coercing.
+
+    ``nullable=None`` (unset) is treated the same as ``False``.
+    """
     if dtype is None or not nullable or not coerce:
         return dtype
 
@@ -180,10 +183,13 @@ class DataFrameModel(_DataFrameModel[pd.DataFrame, DataFrameSchema]):
                         f"'check_name' is not supported for {field_name}."
                     )
 
+                # ``None`` marks "unset" so the dataframe-level
+                # ``Config.nullable`` default can apply at validation time,
+                # unless the field or its annotation sets nullability.
                 nullable = (
                     field.nullable
                     if field.nullable_explicit
-                    else annotation.nullable
+                    else annotation.nullable or None
                 )
                 dtype = _get_nullable_coercion_dtype(
                     dtype,
@@ -195,7 +201,7 @@ class DataFrameModel(_DataFrameModel[pd.DataFrame, DataFrameSchema]):
                 column_kwargs = (
                     field.column_properties(
                         dtype,
-                        nullable=annotation.nullable,
+                        nullable=nullable,
                         required=not annotation.is_optional_field,
                         checks=field_checks,
                         parsers=field_parsers,
@@ -229,6 +235,14 @@ class DataFrameModel(_DataFrameModel[pd.DataFrame, DataFrameSchema]):
                 index_kwargs = (
                     field.index_properties(
                         dtype,
+                        # ``None`` marks "unset" so the dataframe-level
+                        # ``Config.nullable`` default can apply at validation
+                        # time, unless the field or its annotation sets it.
+                        nullable=(
+                            field.nullable
+                            if field.nullable_explicit
+                            else annotation.nullable or None
+                        ),
                         checks=field_checks,
                         parsers=field_parsers,
                         name=field_name,

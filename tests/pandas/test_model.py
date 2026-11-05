@@ -1189,6 +1189,82 @@ def test_config() -> None:
     assert expected == Child.to_schema()
 
 
+def test_config_nullable() -> None:
+    """Test that Config nullable is inherited and translates into the
+    schema-level nullable option."""
+
+    class Base(pa.DataFrameModel):
+        a: Series[float]
+        b: Series[float] = pa.Field(nullable=False)
+
+        class Config:
+            name = "Base schema"
+            nullable = True
+
+    class Child(Base):
+        c: Series[float]
+
+        class Config:
+            name = "Child schema"
+            strict = True
+
+    expected = pa.DataFrameSchema(
+        columns={
+            "a": pa.Column(float),
+            "b": pa.Column(float, nullable=False),
+            "c": pa.Column(float),
+        },
+        name="Child schema",
+        nullable=True,
+        strict=True,
+    )
+
+    assert expected == Child.to_schema()
+
+
+def test_config_nullable_propagates_to_fields() -> None:
+    """Config.nullable=True makes fields that don't declare their own
+    nullability nullable at validation time; an explicit
+    ``pa.Field(nullable=False)`` overrides it."""
+
+    class Schema(pa.DataFrameModel):
+        a: Series[float]
+        b: Series[float] = pa.Field(nullable=False)
+        c: Series[float] = pa.Field(nullable=True)
+
+        class Config:
+            nullable = True
+
+    schema = Schema.to_schema()
+    assert schema.nullable is True
+
+    df = pd.DataFrame({"a": [1.0, None], "b": [1.0, 2.0], "c": [1.0, None]})
+    assert isinstance(Schema.validate(df), pd.DataFrame)
+
+    failure_df = pd.DataFrame(
+        {"a": [1.0, 2.0], "b": [1.0, None], "c": [1.0, 2.0]}
+    )
+    with pytest.raises(SchemaError):
+        Schema.validate(failure_df)
+
+
+def test_config_nullable_applies_to_index() -> None:
+    """Config.nullable=True also applies to an index field that doesn't
+    declare its own nullability."""
+
+    class Schema(pa.DataFrameModel):
+        idx: Index[float]
+        v: Series[float]
+
+        class Config:
+            nullable = True
+
+    df = pd.DataFrame(
+        {"v": [1.0, 2.0]}, index=pd.Index([1.0, None], name="idx")
+    )
+    assert isinstance(Schema.validate(df), pd.DataFrame)
+
+
 def test_multiindex_unique() -> None:
     class Base(pa.DataFrameModel):
         a: Series[int]

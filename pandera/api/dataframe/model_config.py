@@ -23,6 +23,11 @@ class BaseConfig(BaseModelConfig):
     description: str | None = None  #: arbitrary textual description
     coerce: bool = False  #: coerce types of all schema components
 
+    #: default ``nullable`` for schema components (columns and indexes) that
+    #: do not set their own. ``None`` (default) applies no dataframe-level
+    #: default, leaving each component's ``nullable`` setting in effect.
+    nullable: bool | None = None
+
     #: default ``source`` for ``ParsedField`` columns that do not set one
     parser_source: Union[str, list[str], None] = None
     drop_invalid_rows: bool = False  #: drop invalid rows on validation

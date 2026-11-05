@@ -20,6 +20,20 @@ TComponentSchemaBase = TypeVar("TComponentSchemaBase", bound="ComponentSchema")
 TDataObject = TypeVar("TDataObject")
 
 
+def _comparable_dict(obj: "ComponentSchema") -> dict:
+    """Return ``__dict__`` with an unset ``_nullable`` normalized to ``False``.
+
+    ``None`` (unset) and ``False`` are behaviorally identical on a standalone
+    component, so equality must not distinguish them — e.g. between a
+    freshly-defined schema and its round-tripped (serialized/deserialized)
+    counterpart.
+    """
+    attrs = dict(obj.__dict__)
+    if attrs.get("_nullable") is None:
+        attrs["_nullable"] = False
+    return attrs
+
+
 class ComponentSchema(Generic[TDataObject], BaseSchema):
     """Base class for data container component, e.g. columns."""
 
@@ -28,7 +42,7 @@ class ComponentSchema(Generic[TDataObject], BaseSchema):
         dtype: Any | None = None,
         checks: CheckList | None = None,
         parsers: ParserList | None = None,
-        nullable: bool = False,
+        nullable: bool | None = None,
         unique: bool = False,
         report_duplicates: UniqueSettings = "all",
         coerce: bool = False,
@@ -49,6 +63,8 @@ class ComponentSchema(Generic[TDataObject], BaseSchema):
             in the column. Otherwise, the input is assumed to be a the data
             object (Series, DataFrame).
         :param nullable: Whether or not column can contain null values.
+            ``None`` (default) behaves like ``False`` unless the dataframe-
+            level schema applies a ``nullable`` default.
         :param unique: Whether or not column can contain duplicate
             values.
         :param report_duplicates: how to report unique errors
@@ -90,7 +106,7 @@ class ComponentSchema(Generic[TDataObject], BaseSchema):
 
         self.parsers = parsers
         self.checks = checks
-        self.nullable = nullable
+        self._nullable = nullable
         self.unique = unique
         self.report_duplicates = report_duplicates
         self.title = title
@@ -100,6 +116,22 @@ class ComponentSchema(Generic[TDataObject], BaseSchema):
         self._validate_attributes()
 
     def _validate_attributes(self): ...
+
+    @property
+    def nullable(self) -> bool:
+        """Whether the component can contain null values.
+
+        An unset (``None``) value is reported as ``False``; the distinction
+        is kept internally so a dataframe-level ``nullable`` default can
+        tell an unset component apart from one explicitly declared
+        non-nullable.
+        """
+        return False if self._nullable is None else self._nullable
+
+    @nullable.setter
+    def nullable(self, value: bool | None) -> None:
+        """Set nullable attribute."""
+        self._nullable = value
 
     @property
     def _allow_groupby(self):
@@ -172,7 +204,7 @@ class ComponentSchema(Generic[TDataObject], BaseSchema):
         )
 
     def __eq__(self, other):
-        return self.__dict__ == other.__dict__
+        return _comparable_dict(self) == _comparable_dict(other)
 
     if PYDANTIC_V2:
 
